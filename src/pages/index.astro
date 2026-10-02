@@ -1,0 +1,252 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FluidVisual from '../components/FluidVisual.astro';
+import { getPublishedProjects, getRecentWriting } from '../lib/content';
+
+const [profiles, allProjects, allWriting] = await Promise.all([
+  getCollection('profile'),
+  getCollection('projects'),
+  getCollection('writing'),
+]);
+const profile = profiles[0];
+const projects = getPublishedProjects(allProjects);
+const writing = getRecentWriting(allWriting);
+const name = profile?.data.name ?? 'Your Name';
+const headline = profile?.data.headline ?? 'Senior software engineer';
+const email = profile?.data.email;
+const links = [profile?.data.github, profile?.data.linkedin].filter(
+  (link): link is string => Boolean(link),
+);
+---
+
+<BaseLayout
+  title={`${name} — Software Engineer`}
+  description={`${headline}. A portfolio of selected work, ideas, and experiments.`}
+>
+  <header class="site-header shell">
+    <a class="brand" href="#top" aria-label={`${name}, home`}>
+      <span class="brand-mark">{name.slice(0, 1)}</span>
+      <span>{name}</span>
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#writing">Notes</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <span class="availability">Systems · teams · outcomes</span>
+  </header>
+
+  <main id="main">
+    <section class="hero shell" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow section-label">{headline}</p>
+        <h1 id="hero-title">
+          I make complex things <span>feel clear.</span>
+        </h1>
+        <p class="hero-intro">
+          Thoughtful software, considered systems, and a little room for wonder.
+          This is a growing collection of work, ideas, and experiments.
+        </p>
+        <div class="hero-actions">
+          <a class="button-link" href="#work">
+            Explore selected work <span aria-hidden="true">↘</span>
+          </a>
+          <a class="text-link" href="#about">
+            A little about me <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+      <FluidVisual />
+      <div class="hero-index">
+        <span>Independent thinking · collaborative making</span>
+        <span>01 — 03</span>
+      </div>
+    </section>
+
+    <div class="ticker">
+      <div class="ticker-track" aria-hidden="true">
+        {Array.from({ length: 2 }, () => (
+          <span>Product engineering</span>
+        ))}
+        {Array.from({ length: 2 }, () => (
+          <span>Systems thinking</span>
+        ))}
+        {Array.from({ length: 2 }, () => (
+          <span>Creative technology</span>
+        ))}
+        {Array.from({ length: 2 }, () => (
+          <span>Team momentum</span>
+        ))}
+      </div>
+    </div>
+
+    <section class="section shell" id="work" aria-labelledby="work-title">
+      <div class="section-heading">
+        <p class="eyebrow section-label">Selected work · 01</p>
+        <h2 id="work-title">
+          Good work makes <em>room for people.</em>
+        </h2>
+        <p>
+          Case studies will tell the story behind the shipped thing: what was
+          hard, how the team moved through it, and what changed.
+        </p>
+      </div>
+      {projects.length > 0 ? (
+        <div class="work-grid">
+          {projects.map((project, index) => (
+            <a class="work-card" href={`/work/${project.id}/`}>
+              <div class="work-card-top">
+                <span>Case study · {String(index + 1).padStart(2, '0')}</span>
+                <span>{project.data.year}</span>
+              </div>
+              <span class="work-card-icon" aria-hidden="true">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <div class="work-card-bottom">
+                <div>
+                  <h3>{project.data.title}</h3>
+                  <p>{project.data.summary}</p>
+                </div>
+                <span aria-hidden="true">↗</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p class="draft-note">
+          Your case studies are drafts in <code>src/content/projects/</code>.
+          Publish them by setting <code>draft: false</code>.
+        </p>
+      )}
+    </section>
+
+    <section class="section shell" id="about" aria-labelledby="about-title">
+      <div class="about-layout">
+        <p class="eyebrow section-label">How I work · 02</p>
+        <div class="about-copy">
+          <h2 class="eyebrow" id="about-title">
+            Curiosity with follow-through.
+          </h2>
+          <p>
+            I like the part where a hard problem becomes something a team can
+            understand, shape, and ship.
+          </p>
+          <p>
+            The best engineering balances rigor with imagination: strong
+            foundations, useful details, and a healthy respect for the people on
+            the other side of the interface.
+          </p>
+          <div class="principles" aria-label="Working principles">
+            <div class="principle">
+              <strong>01</strong>
+              <span>Make the system legible</span>
+            </div>
+            <div class="principle">
+              <strong>02</strong>
+              <span>Leave things better</span>
+            </div>
+            <div class="principle">
+              <strong>03</strong>
+              <span>Stay curious</span>
+            </div>
+          </div>
+          {links.length > 0 && (
+            <p class="hero-actions">
+              {links.map((link) => (
+                <a
+                  class="text-link"
+                  href={link}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {new URL(link).hostname.replace('www.', '')}{' '}
+                  <span aria-hidden="true">↗</span>
+                </a>
+              ))}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="writing" aria-labelledby="writing-title">
+      <div class="section-heading">
+        <p class="eyebrow section-label">Notes from the work · 03</p>
+        <h2 id="writing-title">
+          Ideas are better <em>when shared.</em>
+        </h2>
+        <p>
+          Short notes on engineering, collaboration, and the unexpected places
+          where technology meets design.
+        </p>
+      </div>
+      {writing.length > 0 ? (
+        <div class="work-grid">
+          {writing.map((entry) => (
+            <a class="work-card" href={`/writing/${entry.id}/`}>
+              <div class="work-card-top">
+                <span>
+                  {entry.data.publishedAt.toLocaleDateString('en', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+                <span>Note ↗</span>
+              </div>
+              <span class="work-card-icon" aria-hidden="true">
+                ✳
+              </span>
+              <div class="work-card-bottom">
+                <div>
+                  <h3>{entry.data.title}</h3>
+                  <p>{entry.data.summary}</p>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p class="draft-note">
+          Writing drafts live in <code>src/content/writing/</code> and appear
+          here when published.
+        </p>
+      )}
+    </section>
+
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <div class="contact-inner shell">
+        <p class="eyebrow section-label">Have a good problem?</p>
+        <h2 id="contact-title">
+          Let’s make something <em>matter.</em>
+        </h2>
+        <div class="contact-bottom">
+          {email ? (
+            <a class="button-link" href={`mailto:${email}`}>
+              Start a conversation <span aria-hidden="true">↗</span>
+            </a>
+          ) : (
+            <a class="button-link" href="#work">
+              Explore selected work <span aria-hidden="true">↗</span>
+            </a>
+          )}
+          {email && (
+            <a class="contact-email" href={`mailto:${email}`}>
+              {email}
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer shell">
+    <span>
+      © {new Date().getFullYear()} {name}
+    </span>
+    <span>Made with care and a little code</span>
+    <a href="#top">Back to top ↑</a>
+  </footer>
+</BaseLayout>

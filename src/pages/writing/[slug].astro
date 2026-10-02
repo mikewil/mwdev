@@ -1,0 +1,45 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('writing', ({ data }) => !data.draft);
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BaseLayout
+  title={`${entry.data.title} — Note`}
+  description={entry.data.summary}
+>
+  <header class="site-header shell">
+    <a class="brand" href="/">
+      ← <span>Back to portfolio</span>
+    </a>
+    <span class="eyebrow">
+      {entry.data.publishedAt.toLocaleDateString('en', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}
+    </span>
+  </header>
+  <main id="main" class="section shell">
+    <p class="eyebrow section-label">Field note</p>
+    <h1 class="detail-title">{entry.data.title}</h1>
+    <p class="detail-summary">{entry.data.summary}</p>
+    <article class="prose">
+      <Content />
+    </article>
+  </main>
+  <footer class="site-footer shell">
+    <span>{entry.data.tags.join(' · ')}</span>
+    <a href="/">Back home ↑</a>
+  </footer>
+</BaseLayout>

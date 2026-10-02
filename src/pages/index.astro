@@ -39,48 +39,34 @@ const links = [profile?.data.github, profile?.data.linkedin].filter(
   </header>
 
   <main id="main">
-    <section class="hero shell" id="top" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow section-label">{headline}</p>
-        <h1 id="hero-title">
-          I make complex things <span>feel clear.</span>
-        </h1>
-        <p class="hero-intro">
-          Thoughtful software, considered systems, and a little room for wonder.
-          This is a growing collection of work, ideas, and experiments.
-        </p>
-        <div class="hero-actions">
-          <a class="button-link" href="#work">
-            Explore selected work <span aria-hidden="true">↘</span>
-          </a>
-          <a class="text-link" href="#about">
-            A little about me <span aria-hidden="true">→</span>
-          </a>
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <FluidVisual />
+      <div class="hero-inner shell">
+        <div class="hero-copy">
+          <p class="eyebrow section-label">{headline}</p>
+          <h1 id="hero-title">
+            I make complex things <span>feel clear.</span>
+          </h1>
+          <p class="hero-intro">
+            Thoughtful software, considered systems, and a little room for
+            wonder. This is a growing collection of work, ideas, and
+            experiments.
+          </p>
+          <div class="hero-actions">
+            <a class="button-link" href="#work">
+              Explore selected work <span aria-hidden="true">↘</span>
+            </a>
+            <a class="text-link" href="#about">
+              A little about me <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+        <div class="hero-index">
+          <span>Independent thinking · collaborative making</span>
+          <span>01 — 03</span>
         </div>
       </div>
-      <FluidVisual />
-      <div class="hero-index">
-        <span>Independent thinking · collaborative making</span>
-        <span>01 — 03</span>
-      </div>
     </section>
-
-    <div class="ticker">
-      <div class="ticker-track" aria-hidden="true">
-        {Array.from({ length: 2 }, () => (
-          <span>Product engineering</span>
-        ))}
-        {Array.from({ length: 2 }, () => (
-          <span>Systems thinking</span>
-        ))}
-        {Array.from({ length: 2 }, () => (
-          <span>Creative technology</span>
-        ))}
-        {Array.from({ length: 2 }, () => (
-          <span>Team momentum</span>
-        ))}
-      </div>
-    </div>
 
     <section class="section shell" id="work" aria-labelledby="work-title">
       <div class="section-heading">
@@ -130,10 +116,11 @@ const links = [profile?.data.github, profile?.data.linkedin].filter(
             Curiosity with follow-through.
           </h2>
           <p>
-              I have a passion for creating modern web applications and extensive 
-              experience leading solutions from concept through launch. I specialize 
-              in initiatives where strong UX and thoughtful architecture are equally 
-              important in delivering polished, scalable, and maintainable products.
+            I have a passion for creating modern web applications and extensive
+            experience leading solutions from concept through launch. I
+            specialize in initiatives where strong UX and thoughtful
+            architecture are equally important in delivering polished, scalable,
+            and maintainable products.
           </p>
           <p>
             The best engineering balances rigor with imagination: strong

@@ -5,23 +5,20 @@
   aria-hidden="true"
 >
   <canvas></canvas>
-  <span class="visual-crosshair"></span>
-  <div class="visual-caption">
-    <span>Field study 001</span>
-    <span>Systems in motion</span>
-  </div>
 </div>
 
 <script>
   const stage = document.querySelector<HTMLElement>('[data-fluid-visual]');
   const canvas = stage?.querySelector('canvas');
+  const hero = stage?.closest<HTMLElement>('.hero');
 
-  if (stage && canvas) {
+  if (stage && canvas && hero) {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const gl = canvas.getContext('webgl', {
-      alpha: false,
+      alpha: true,
       antialias: false,
       powerPreference: 'low-power',
+      premultipliedAlpha: false,
     });
 
     if (!gl) {
@@ -60,25 +57,64 @@
             varying vec2 vUv;
             uniform float uTime;
             uniform vec2 uResolution;
+            uniform vec4 uPointer;
+            uniform vec3 uBlue;
+            uniform vec3 uPink;
+            uniform vec3 uPurple;
+            uniform vec3 uOrange;
 
-            float field(vec2 p, float t) {
-              float a = sin(p.x * 3.1 + t * .38) * cos(p.y * 2.7 - t * .31);
-              float b = sin((p.x + p.y) * 2.2 - t * .22);
-              return a * .58 + b * .42;
+            float hash(vec2 p) {
+              return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+
+            float noise(vec2 p) {
+              vec2 i = floor(p);
+              vec2 f = fract(p);
+              vec2 u = f * f * (3.0 - 2.0 * f);
+              return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+                u.y
+              );
+            }
+
+            float fbm(vec2 p) {
+              float value = 0.0;
+              float amplitude = 0.5;
+              for (int i = 0; i < 4; i++) {
+                value += amplitude * noise(p);
+                p = mat2(1.6, 1.2, -1.2, 1.6) * p + 3.7;
+                amplitude *= 0.5;
+              }
+              return value;
             }
 
             void main() {
-              vec2 p = (vUv - .5) * vec2(uResolution.x / uResolution.y, 1.0);
-              float f = field(p * 2.0, uTime);
-              float orbit = length(p + vec2(sin(uTime * .2) * .12, cos(uTime * .17) * .08));
-              float band = sin(orbit * 13.0 - f * 3.0 + uTime * .25);
-              vec3 deep = vec3(.055, .15, .13);
-              vec3 green = vec3(.22, .42, .31);
-              vec3 lime = vec3(.83, 1.0, .24);
-              vec3 color = mix(deep, green, smoothstep(-.7, .55, f + band * .14));
-              color = mix(color, lime, smoothstep(.72, .98, f + band * .14) * .85);
-              float vignette = smoothstep(1.08, .18, length(p));
-              gl_FragColor = vec4(color * vignette, 1.0);
+              float aspect = uResolution.x / uResolution.y;
+              vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
+              vec2 pointer = (uPointer.xy - 0.5) * vec2(aspect, 1.0);
+              vec2 delta = p - pointer;
+              float distanceToPointer = length(delta);
+              float hover = uPointer.z * exp(-distanceToPointer * 5.0);
+              float swirl = sin(distanceToPointer * 25.0 - uTime * 4.0) * hover;
+              vec2 flow = vec2(-delta.y, delta.x) * swirl * 0.16;
+
+              vec2 drift = vec2(uTime * 0.025, -uTime * 0.045);
+              vec2 warped = p * 2.4 + drift + flow * 5.0;
+              float broad = fbm(warped + vec2(fbm(warped + 2.1), 0.0));
+              float detail = fbm(warped * 1.8 - vec2(0.0, uTime * 0.08));
+              float wisps = broad * 0.68 + detail * 0.32 + hover * 0.4;
+              float density = smoothstep(0.32, 0.68, wisps);
+              float palette = fbm(warped * 0.58 + vec2(4.7, -2.8));
+
+              vec3 color = mix(uBlue, uPurple, smoothstep(0.16, 0.52, palette));
+              color = mix(color, uPink, smoothstep(0.44, 0.72, palette));
+              color = mix(color, uOrange, smoothstep(0.68, 0.9, palette));
+              float edge = smoothstep(0.0, 0.44, broad - detail * 0.2);
+              float alpha = clamp(density * (0.36 + edge * 0.52), 0.0, 0.9);
+              alpha *= smoothstep(1.2, 0.2, length(p) / max(aspect, 1.0));
+
+              gl_FragColor = vec4(color, alpha);
             }
           `,
         );
@@ -96,10 +132,37 @@
         const position = gl.getAttribLocation(program, 'aPosition');
         const time = gl.getUniformLocation(program, 'uTime');
         const resolution = gl.getUniformLocation(program, 'uResolution');
+        const pointer = gl.getUniformLocation(program, 'uPointer');
+        const blue = gl.getUniformLocation(program, 'uBlue');
+        const pink = gl.getUniformLocation(program, 'uPink');
+        const purple = gl.getUniformLocation(program, 'uPurple');
+        const orange = gl.getUniformLocation(program, 'uOrange');
         const buffer = gl.createBuffer();
-        if (!buffer || position < 0 || !time || !resolution) {
+        if (
+          !buffer ||
+          position < 0 ||
+          !time ||
+          !resolution ||
+          !pointer ||
+          !blue ||
+          !pink ||
+          !purple ||
+          !orange
+        ) {
           throw new Error('Could not initialize WebGL scene buffers.');
         }
+
+        const readColor = (name: string) => {
+          const value = getComputedStyle(stage).getPropertyValue(name).trim();
+          const match = value.match(/^#([\da-f]{6})$/i);
+          if (!match) throw new Error(`Invalid smoke color: ${name}`);
+          const color = Number.parseInt(match[1], 16);
+          return new Float32Array([
+            ((color >> 16) & 255) / 255,
+            ((color >> 8) & 255) / 255,
+            (color & 255) / 255,
+          ]);
+        };
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(
@@ -110,23 +173,51 @@
         gl.useProgram(program);
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+        gl.uniform3fv(blue, readColor('--smoke-blue'));
+        gl.uniform3fv(pink, readColor('--smoke-pink'));
+        gl.uniform3fv(purple, readColor('--smoke-purple'));
+        gl.uniform3fv(orange, readColor('--nuclear'));
+        gl.clearColor(0, 0, 0, 0);
         stage.dataset.webgl = 'ready';
 
+        const pointerPosition = { x: 0.5, y: 0.5 };
+        let pointerStrength = 0;
+        let pointerTarget = 0;
         let visible = false;
         let disposed = false;
         let frame = 0;
-        const resize = () => {
+
+        const onPointerMove = (event: PointerEvent) => {
+          if (
+            reducedMotion.matches ||
+            (event.pointerType !== 'mouse' && event.pointerType !== 'pen')
+          ) {
+            return;
+          }
           const bounds = stage.getBoundingClientRect();
-          const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
-          canvas.width = Math.round(bounds.width * ratio);
-          canvas.height = Math.round(bounds.height * ratio);
-          gl.viewport(0, 0, canvas.width, canvas.height);
-          gl.uniform2f(resolution, canvas.width, canvas.height);
-          draw(0);
+          if (!bounds.width || !bounds.height) return;
+          pointerPosition.x = (event.clientX - bounds.left) / bounds.width;
+          pointerPosition.y = 1 - (event.clientY - bounds.top) / bounds.height;
+          pointerTarget = 1;
         };
+        const onPointerLeave = (event: PointerEvent) => {
+          if (event.pointerType !== 'touch') pointerTarget = 0;
+        };
+
         const draw = (timestamp: number) => {
           if (disposed || !visible || document.hidden) return;
-          gl.uniform1f(time, reducedMotion.matches ? 0 : timestamp * 0.001);
+          const now = reducedMotion.matches ? 0 : timestamp * 0.001;
+          pointerStrength = reducedMotion.matches
+            ? 0
+            : pointerStrength + (pointerTarget - pointerStrength) * 0.08;
+          gl.uniform1f(time, now);
+          gl.uniform4f(
+            pointer,
+            pointerPosition.x,
+            pointerPosition.y,
+            pointerStrength,
+            0,
+          );
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
           if (!reducedMotion.matches)
             frame = window.requestAnimationFrame(draw);
@@ -134,6 +225,15 @@
         const stop = () => {
           window.cancelAnimationFrame(frame);
           frame = 0;
+        };
+        const resize = () => {
+          const bounds = stage.getBoundingClientRect();
+          const ratio = Math.min(window.devicePixelRatio || 1, 1.2);
+          canvas.width = Math.max(1, Math.round(bounds.width * ratio));
+          canvas.height = Math.max(1, Math.round(bounds.height * ratio));
+          gl.viewport(0, 0, canvas.width, canvas.height);
+          gl.uniform2f(resolution, canvas.width, canvas.height);
+          draw(0);
         };
         const observer = new IntersectionObserver(([entry]) => {
           visible = entry.isIntersecting;
@@ -143,6 +243,9 @@
         const resizeObserver = new ResizeObserver(resize);
         observer.observe(stage);
         resizeObserver.observe(stage);
+        hero.addEventListener('pointermove', onPointerMove);
+        hero.addEventListener('pointerleave', onPointerLeave);
+
         const onMotionChange = () => {
           stop();
           if (visible) draw(0);
@@ -162,6 +265,8 @@
             stop();
             observer.disconnect();
             resizeObserver.disconnect();
+            hero.removeEventListener('pointermove', onPointerMove);
+            hero.removeEventListener('pointerleave', onPointerLeave);
             reducedMotion.removeEventListener('change', onMotionChange);
             document.removeEventListener(
               'visibilitychange',

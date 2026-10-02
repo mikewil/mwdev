@@ -1,7 +1,7 @@
 ---
-name: Your Name
-headline: Senior software engineer · systems thinker · visual storyteller
-location: Replace with your location
+name: Michael Williams
+headline: Solution Architect · systems thinker · visual storyteller
+location: Dayton, Ohio
 ---
 
-Replace this starter profile with a short, first-person introduction. Focus on the work you want to be known for and the kind of problems you enjoy solving.
+I have a passion for creating modern web applications and extensive experience leading solutions from concept through launch. I specialize in initiatives where strong UX and thoughtful architecture are equally important in delivering polished, scalable, and maintainable products.

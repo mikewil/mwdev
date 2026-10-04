@@ -23,3 +23,73 @@ jobs:
       - run: npm run verify
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: Upload static site artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hostgator-site
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: Deploy to HostGator
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: mwdev
+    permissions:
+      contents: read
+    concurrency:
+      group: hostgator-production
+      cancel-in-progress: false
+    steps:
+      - name: Download verified site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hostgator-site
+          path: dist/
+      - name: Upload site over SFTP
+        shell: bash
+        env:
+          HOST: ${{ vars.HOSTGATOR_HOST }}
+          USERNAME: ${{ vars.HOSTGATOR_USER }}
+          PORT: ${{ vars.HOSTGATOR_PORT }}
+          REMOTE_DIR: ${{ vars.HOSTGATOR_REMOTE_DIR }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.HOSTGATOR_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          : "${HOST:?Set HOSTGATOR_HOST in the production environment}"
+          : "${USERNAME:?Set HOSTGATOR_USER in the production environment}"
+          : "${PORT:?Set HOSTGATOR_PORT in the production environment}"
+          : "${REMOTE_DIR:?Set HOSTGATOR_REMOTE_DIR in the production environment}"
+          : "${PRIVATE_KEY:?Add PRIVATE_KEY to the production environment secrets}"
+          : "${KNOWN_HOSTS:?Add verified HOSTGATOR_KNOWN_HOSTS to the production environment secrets}"
+
+          if [[ ! "$PORT" =~ ^[0-9]+$ ]]; then
+            echo "HOSTGATOR_PORT must be a numeric port."
+            exit 1
+          fi
+
+          if [[ "$REMOTE_DIR" != /* || "$REMOTE_DIR" == *$'\n'* || "$REMOTE_DIR" == *$'\r'* || "$REMOTE_DIR" == *'"'* ]]; then
+            echo "HOSTGATOR_REMOTE_DIR must be an absolute SFTP path without quotes or line breaks."
+            exit 1
+          fi
+
+          test -f dist/index.html
+          install -m 700 -d "$RUNNER_TEMP/hostgator-ssh"
+          printf '%s\n' "$PRIVATE_KEY" > "$RUNNER_TEMP/hostgator-ssh/deploy_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$RUNNER_TEMP/hostgator-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/hostgator-ssh/deploy_key" "$RUNNER_TEMP/hostgator-ssh/known_hosts"
+          ssh-keygen -y -f "$RUNNER_TEMP/hostgator-ssh/deploy_key" > /dev/null
+
+          printf 'cd "%s"\nput -r dist/*\n' "$REMOTE_DIR" | sftp -b - \
+            -i "$RUNNER_TEMP/hostgator-ssh/deploy_key" \
+            -P "$PORT" \
+            -oBatchMode=yes \
+            -oIdentitiesOnly=yes \
+            -oStrictHostKeyChecking=yes \
+            -oUserKnownHostsFile="$RUNNER_TEMP/hostgator-ssh/known_hosts" \
+            "$USERNAME@$HOST"

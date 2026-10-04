@@ -91,15 +91,10 @@ a {
   text-decoration: none;
   font: 700 0.85rem var(--display);
 }
-.brand-mark {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--surface-raised);
-  color: var(--nuclear);
-  font: 500 0.75rem var(--mono);
+.brand-logo {
+  display: block;
+  width: 36px;
+  height: auto;
 }
 .site-nav {
   display: flex;

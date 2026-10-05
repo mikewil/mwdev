@@ -183,6 +183,7 @@
         const pointerPosition = { x: 0.5, y: 0.5 };
         let pointerStrength = 0;
         let pointerTarget = 0;
+        let previousTimestamp: number | null = null;
         let visible = false;
         let disposed = false;
         let frame = 0;
@@ -207,9 +208,16 @@
         const draw = (timestamp: number) => {
           if (disposed || !visible || document.hidden) return;
           const now = reducedMotion.matches ? 0 : timestamp * 0.001;
+          const deltaSeconds =
+            timestamp === 0 || previousTimestamp === null
+              ? 1 / 60
+              : Math.max(0, (timestamp - previousTimestamp) * 0.001);
+          previousTimestamp = timestamp === 0 ? null : timestamp;
           pointerStrength = reducedMotion.matches
             ? 0
-            : pointerStrength + (pointerTarget - pointerStrength) * 0.08;
+            : pointerStrength +
+              (pointerTarget - pointerStrength) *
+                (1 - Math.exp(-5 * deltaSeconds));
           gl.uniform1f(time, now);
           gl.uniform4f(
             pointer,

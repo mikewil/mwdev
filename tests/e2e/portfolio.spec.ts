@@ -63,7 +63,15 @@ test('submits the contact form with client validation and inline feedback', asyn
   await name.fill('Ada Lovelace');
 
   await page.route('**/contact.php', async (route) => {
-    expect(route.request().method()).toBe('POST');
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['content-type']).toContain(
+      'application/x-www-form-urlencoded',
+    );
+    const fields = new URLSearchParams(request.postData() ?? '');
+    expect(fields.get('name')).toBe('Ada Lovelace');
+    expect(fields.get('email')).toBe('ada@example.com');
+    expect(fields.get('message')).toBe('Hello.');
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -76,6 +84,30 @@ test('submits the contact form with client validation and inline feedback', asyn
   await expect(email).toHaveValue('');
   await expect(message).toHaveValue('');
   await expect(form).toBeVisible();
+});
+
+test('explains hosting conflicts from non-JSON responses and retains form values', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Name').fill('Ada Lovelace');
+  await page.getByLabel('Email Address').fill('ada@example.com');
+  await page.getByLabel('Message').fill('Hello.');
+  await page.route('**/contact.php', (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'text/html; charset=iso-8859-1',
+      body: '<html><body>Conflict</body></html>',
+    }),
+  );
+
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('[data-contact-feedback]')).toContainText(
+    'hosting server rejected this submission (409 Conflict)',
+  );
+  await expect(page.getByLabel('Name')).toHaveValue('Ada Lovelace');
+  await expect(page.getByLabel('Email Address')).toHaveValue('ada@example.com');
+  await expect(page.getByLabel('Message')).toHaveValue('Hello.');
 });
 
 test('shows server validation errors beside the matching contact fields', async ({

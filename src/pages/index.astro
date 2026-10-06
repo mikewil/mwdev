@@ -401,11 +401,31 @@ const links = [profile?.data.github, profile?.data.linkedin].filter(
       submitButton.textContent = 'Sending…';
 
       try {
+        const body = new URLSearchParams();
+        for (const name of [...fieldNames, 'website'] as const) {
+          const field = form.querySelector<
+            HTMLInputElement | HTMLTextAreaElement
+          >(`[name="${name}"]`);
+          if (field) body.set(name, field.value);
+        }
+
         const response = await fetch(form.action, {
           method: 'POST',
-          body: new FormData(form),
-          headers: { Accept: 'application/json' },
+          body,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          },
         });
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.toLowerCase().includes('application/json')) {
+          feedback.textContent =
+            response.status === 409
+              ? 'The hosting server rejected this submission (409 Conflict). Please try again later or email mike@mwilliams.dev.'
+              : `The server could not process your message (HTTP ${response.status}). Please try again later.`;
+          return;
+        }
+
         const result = (await response.json()) as {
           ok?: boolean;
           errors?: Partial<Record<(typeof fieldNames)[number], string>>;

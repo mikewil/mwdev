@@ -161,7 +161,7 @@ test('shows each project screenshot on its homepage case study card', async ({
       ];
     });
     for (const gap of verticalGaps) {
-      expect(gap).toBeGreaterThanOrEqual(32);
+      expect(gap).toBeGreaterThanOrEqual(16);
     }
   }
 

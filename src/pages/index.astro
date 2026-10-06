@@ -14,7 +14,6 @@ const projects = getPublishedProjects(allProjects);
 const writing = getRecentWriting(allWriting);
 const name = profile?.data.name ?? 'Your Name';
 const headline = profile?.data.headline ?? 'Senior software engineer';
-const email = profile?.data.email;
 const links = [profile?.data.github, profile?.data.linkedin].filter(
   (link): link is string => Boolean(link),
 );
@@ -233,25 +232,93 @@ const links = [profile?.data.github, profile?.data.linkedin].filter(
 
     <section class="contact" id="contact" aria-labelledby="contact-title">
       <div class="contact-inner shell">
-        <p class="eyebrow section-label">Have a good problem?</p>
-        <h2 id="contact-title">
-          Let’s make something <em>matter.</em>
-        </h2>
-        <div class="contact-bottom">
-          {email ? (
-            <a class="button-link" href={`mailto:${email}`}>
-              Start a conversation <span aria-hidden="true">↗</span>
-            </a>
-          ) : (
-            <a class="button-link" href="#work">
-              Explore selected work <span aria-hidden="true">↗</span>
-            </a>
-          )}
-          {email && (
-            <a class="contact-email" href={`mailto:${email}`}>
-              {email}
-            </a>
-          )}
+        <div class="contact-intro">
+          <p class="eyebrow section-label">Have a good problem?</p>
+          <h2 id="contact-title">
+            Let’s make something <em>matter.</em>
+          </h2>
+        </div>
+
+        <div class="contact-form-layout">
+          <form
+            class="contact-form"
+            id="contact-form"
+            aria-label="Contact form"
+            action="/contact.php"
+            method="post"
+          >
+            <div class="contact-field">
+              <label for="contact-name">Name</label>
+              <input
+                id="contact-name"
+                name="name"
+                type="text"
+                autocomplete="name"
+                maxlength="120"
+                required
+                aria-describedby="contact-name-error"
+              />
+              <span class="contact-field-error" id="contact-name-error"></span>
+            </div>
+            <div class="contact-field">
+              <label for="contact-email">Email Address</label>
+              <input
+                id="contact-email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                maxlength="254"
+                required
+                aria-describedby="contact-email-error"
+              />
+              <span class="contact-field-error" id="contact-email-error"></span>
+            </div>
+            <div class="contact-field contact-field-message">
+              <label for="contact-message">Message</label>
+              <textarea
+                id="contact-message"
+                name="message"
+                rows="6"
+                maxlength="5000"
+                required
+                aria-describedby="contact-message-error"
+              ></textarea>
+              <span
+                class="contact-field-error"
+                id="contact-message-error"
+              ></span>
+            </div>
+            <div class="contact-honeypot" aria-hidden="true">
+              <label for="contact-website">Leave this field empty</label>
+              <input
+                id="contact-website"
+                name="website"
+                type="text"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </div>
+            <div class="contact-form-actions">
+              <p
+                class="contact-feedback"
+                data-contact-feedback
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              ></p>
+              <button class="button-link" type="submit">
+                Send
+              </button>
+            </div>
+          </form>
+          <img
+            class="contact-mark"
+            src="/mw-logo-orange.svg"
+            alt=""
+            aria-hidden="true"
+            width="240"
+            height="116"
+          />
         </div>
       </div>
     </section>
@@ -265,3 +332,118 @@ const links = [profile?.data.github, profile?.data.linkedin].filter(
     <a href="#top">Back to top ↑</a>
   </footer>
 </BaseLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('#contact-form');
+
+  if (form) {
+    const feedback = form.querySelector<HTMLElement>('[data-contact-feedback]');
+    const submitButton = form.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+    const fieldNames = ['name', 'email', 'message'] as const;
+
+    const clearFieldError = (name: (typeof fieldNames)[number]) => {
+      const field = form.elements.namedItem(name);
+      const error = form.querySelector<HTMLElement>(`#contact-${name}-error`);
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLTextAreaElement
+      ) {
+        field.removeAttribute('aria-invalid');
+      }
+      if (error) error.textContent = '';
+    };
+
+    for (const name of fieldNames) {
+      form
+        .querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `[name="${name}"]`,
+        )
+        ?.addEventListener('input', (event) => {
+          const field = event.currentTarget;
+          if (
+            field instanceof HTMLInputElement ||
+            field instanceof HTMLTextAreaElement
+          ) {
+            field.setCustomValidity('');
+          }
+          clearFieldError(name);
+          if (feedback) feedback.textContent = '';
+        });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!feedback || !submitButton) return;
+
+      for (const name of ['name', 'message'] as const) {
+        const field = form.elements.namedItem(name);
+        if (!(
+          field instanceof HTMLInputElement ||
+          field instanceof HTMLTextAreaElement
+        )) {
+          continue;
+        }
+        if (field.value.trim() === '') {
+          field.setCustomValidity(
+            name === 'name' ? 'Enter your name.' : 'Enter a message.',
+          );
+          field.reportValidity();
+          field.focus();
+          return;
+        }
+      }
+
+      for (const name of fieldNames) clearFieldError(name);
+      feedback.textContent = 'Sending your message…';
+      submitButton.disabled = true;
+      submitButton.textContent = 'Sending…';
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        const result = (await response.json()) as {
+          ok?: boolean;
+          errors?: Partial<Record<(typeof fieldNames)[number], string>>;
+        };
+
+        if (!response.ok || !result.ok) {
+          let hasFieldError = false;
+          for (const name of fieldNames) {
+            const errorText = result.errors?.[name];
+            if (!errorText) continue;
+            hasFieldError = true;
+            const field = form.elements.namedItem(name);
+            const error = form.querySelector<HTMLElement>(
+              `#contact-${name}-error`,
+            );
+            if (
+              field instanceof HTMLInputElement ||
+              field instanceof HTMLTextAreaElement
+            ) {
+              field.setAttribute('aria-invalid', 'true');
+            }
+            if (error) error.textContent = errorText;
+          }
+          feedback.textContent = hasFieldError
+            ? 'Please correct the highlighted fields and try again.'
+            : 'Your message could not be sent. Please try again.';
+          return;
+        }
+
+        form.reset();
+        feedback.textContent = 'Thanks — your message has been sent.';
+      } catch {
+        feedback.textContent =
+          'Your message could not be sent. Please check your connection and try again.';
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Send';
+      }
+    });
+  }
+</script>

@@ -23,6 +23,131 @@ test('presents the portfolio structure and working in-page navigation', async ({
   await expect(page).toHaveURL(/#about$/);
 });
 
+test('submits the contact form with client validation and inline feedback', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const form = page.getByRole('form', { name: 'Contact form' });
+  const name = page.getByLabel('Name');
+  const email = page.getByLabel('Email Address');
+  const message = page.getByLabel('Message');
+  const send = page.getByRole('button', { name: 'Send' });
+  const feedback = page.locator('[data-contact-feedback]');
+
+  await send.click();
+  expect(
+    await name.evaluate(
+      (field) => (field as HTMLInputElement).validity.valueMissing,
+    ),
+  ).toBe(true);
+  await expect(page).toHaveURL('/');
+
+  await name.fill('Ada Lovelace');
+  await email.fill('not-an-email');
+  await message.fill('Hello.');
+  await send.click();
+  expect(
+    await email.evaluate(
+      (field) => (field as HTMLInputElement).validity.typeMismatch,
+    ),
+  ).toBe(true);
+
+  await email.fill('ada@example.com');
+  await name.fill('   ');
+  await send.click();
+  expect(
+    await name.evaluate(
+      (field) => (field as HTMLInputElement).validity.customError,
+    ),
+  ).toBe(true);
+  await name.fill('Ada Lovelace');
+
+  await page.route('**/contact.php', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+  await send.click();
+  await expect(feedback).toHaveText('Thanks — your message has been sent.');
+  await expect(name).toHaveValue('');
+  await expect(email).toHaveValue('');
+  await expect(message).toHaveValue('');
+  await expect(form).toBeVisible();
+});
+
+test('shows server validation errors beside the matching contact fields', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Name').fill('Ada Lovelace');
+  await page.getByLabel('Email Address').fill('ada@example.com');
+  await page.getByLabel('Message').fill('Hello.');
+  await page.route('**/contact.php', (route) =>
+    route.fulfill({
+      status: 422,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: false,
+        errors: { email: 'Enter a valid email address.' },
+      }),
+    }),
+  );
+
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('#contact-email')).toHaveAttribute(
+    'aria-invalid',
+    'true',
+  );
+  await expect(page.locator('#contact-email-error')).toHaveText(
+    'Enter a valid email address.',
+  );
+  await expect(page.locator('[data-contact-feedback]')).toContainText(
+    'Please correct the highlighted fields',
+  );
+});
+
+test('places the contact logo beside the form and stacks it below on mobile', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  const desktopLayout = await page.evaluate(() => {
+    const form = document.querySelector('#contact-form');
+    const logo = document.querySelector('.contact-mark');
+    const contact = document.querySelector('.contact');
+    if (!form || !logo || !contact) {
+      throw new Error('Contact form, logo, or section is missing.');
+    }
+    return {
+      formRight: form.getBoundingClientRect().right,
+      logoLeft: logo.getBoundingClientRect().left,
+      pseudoContent: getComputedStyle(contact, '::after').content,
+    };
+  });
+  expect(desktopLayout.logoLeft).toBeGreaterThanOrEqual(
+    desktopLayout.formRight,
+  );
+  expect(desktopLayout.pseudoContent).toBe('none');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileLayout = await page.evaluate(() => {
+    const form = document.querySelector('#contact-form');
+    const logo = document.querySelector('.contact-mark');
+    if (!form || !logo) throw new Error('Contact form or logo is missing.');
+    return {
+      formBottom: form.getBoundingClientRect().bottom,
+      logoTop: logo.getBoundingClientRect().top,
+      hasHorizontalOverflow:
+        document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+  expect(mobileLayout.logoTop).toBeGreaterThanOrEqual(mobileLayout.formBottom);
+  expect(mobileLayout.hasHorizontalOverflow).toBe(false);
+});
+
 test('publishes the Rediscovering WebGL note with its image and example link', async ({
   page,
 }) => {

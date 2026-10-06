@@ -28,4 +28,6 @@ Read [GITHUB_AUTOMATION.md](GITHUB_AUTOMATION.md) for Project setup, credentials
 
 ## HostGator deployment
 
-The site builds to `dist/` as static files. Before adding a production publisher, confirm the HostGator hosting type, domain document root, and available secure transfer method. Do not add credentials to the repository.
+The site builds to `dist/` as a static Astro site. The contact form also requires `dist/contact.php` to be deployed at the site root and executed by HostGator's PHP runtime, with PHP mail/Sendmail enabled. The form endpoint uses the host mail transport and does not need SMTP credentials. The local Astro dev server does not execute PHP; use a PHP-enabled local web server to test real delivery. Never add hosting credentials to the repository.
+
+Run the PHP endpoint validation tests with `php tests/contact.test.php` when PHP is available.

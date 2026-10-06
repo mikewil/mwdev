@@ -22,12 +22,28 @@ const { Content } = await render(project);
     <a class="brand" href="/">
       ← <span>Back to portfolio</span>
     </a>
-    <span class="eyebrow">Case study · {project.data.year}</span>
+    <span class="eyebrow">
+      Case study{project.data.year ? ` · ${project.data.year}` : ''}
+    </span>
   </header>
   <main id="main" class="section shell">
-    <p class="eyebrow section-label">{project.data.role}</p>
+    {project.data.role && (
+      <p class="eyebrow section-label">{project.data.role}</p>
+    )}
     <h1 class="detail-title">{project.data.title}</h1>
     <p class="detail-summary">{project.data.summary}</p>
+    {project.data.screenshot && (
+      <figure class="project-screenshot">
+        <img
+          src={project.data.screenshot.src}
+          alt={project.data.screenshot.alt}
+          loading="eager"
+        />
+        {project.data.screenshot.caption && (
+          <figcaption>{project.data.screenshot.caption}</figcaption>
+        )}
+      </figure>
+    )}
     <article class="prose">
       <Content />
     </article>

@@ -7,11 +7,18 @@ const projects = defineCollection({
   schema: z.object({
     title: z.string(),
     summary: z.string(),
-    role: z.string(),
-    year: z.number().int(),
+    role: z.string().optional(),
+    year: z.number().int().optional(),
     tags: z.array(z.string()).default([]),
     featured: z.boolean().default(false),
     draft: z.boolean().default(false),
+    screenshot: z
+      .object({
+        src: z.string().min(1),
+        alt: z.string().min(1),
+        caption: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 
@@ -23,6 +30,12 @@ const writing = defineCollection({
     publishedAt: z.coerce.date(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
+    image: z
+      .object({
+        src: z.string().min(1),
+        alt: z.string().min(1),
+      })
+      .optional(),
   }),
 });
 

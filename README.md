@@ -15,8 +15,8 @@ npm run dev
 
 - Update the profile in `src/content/profile/index.md`.
 - Add case studies under `src/content/projects/` and notes under `src/content/writing/`.
-- Each collection validates its frontmatter in `src/content.config.ts`. Set `draft: false` to publish an entry.
-- Keep outcomes and metrics factual. The current project and writing entries are drafts with no personal claims.
+- Each collection validates its frontmatter in `src/content.config.ts`. Set `draft: false` to publish an entry. Project role and year are optional; add a `screenshot` object with a public asset path in `src` and descriptive `alt` text to show an application screenshot, and optionally add a `caption`. Writing entries may include an optional `image` object with a public asset path and descriptive `alt` text.
+- Keep outcomes and metrics factual. The starter writing note remains a draft until it is replaced with verified content.
 
 ## Codex
 

@@ -12,6 +12,7 @@ describe('portfolio content selection', () => {
         id: 'new-standard',
         data: { draft: false, featured: false, year: 2025 },
       },
+      { id: 'undated', data: { draft: false, featured: false } },
       {
         id: 'new-featured',
         data: { draft: false, featured: true, year: 2025 },
@@ -23,6 +24,7 @@ describe('portfolio content selection', () => {
       'new-featured',
       'old-featured',
       'new-standard',
+      'undated',
     ]);
   });
 

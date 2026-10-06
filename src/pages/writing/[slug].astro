@@ -34,6 +34,15 @@ const { Content } = await render(entry);
     <p class="eyebrow section-label">Field note</p>
     <h1 class="detail-title">{entry.data.title}</h1>
     <p class="detail-summary">{entry.data.summary}</p>
+    {entry.data.image && (
+      <figure class="writing-image">
+        <img
+          src={entry.data.image.src}
+          alt={entry.data.image.alt}
+          loading="eager"
+        />
+      </figure>
+    )}
     <article class="prose">
       <Content />
     </article>

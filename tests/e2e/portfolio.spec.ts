@@ -23,6 +23,217 @@ test('presents the portfolio structure and working in-page navigation', async ({
   await expect(page).toHaveURL(/#about$/);
 });
 
+test('publishes the Rediscovering WebGL note with its image and example link', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const note = page.getByRole('link', { name: /Rediscovering WebGL/ });
+  await expect(note).toBeVisible();
+  await expect(note).toHaveAttribute('href', '/writing/rediscovering-webgl/');
+  const cardImage = note.locator('.work-card-thumbnail');
+  await expect(cardImage).toHaveAttribute(
+    'src',
+    '/images/writing/rediscovering-webgl.png',
+  );
+  await expect(cardImage).toHaveAttribute('alt', '');
+  await expect(cardImage).toHaveCSS('object-fit', 'cover');
+  await expect(cardImage).toHaveCSS('object-position', '50% 50%');
+  await cardImage.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      cardImage.evaluate(
+        (element) => (element as HTMLImageElement).naturalWidth,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await note.click();
+
+  await expect(page).toHaveURL('/writing/rediscovering-webgl/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Rediscovering WebGL',
+  );
+  const articleImage = page.locator('.writing-image img');
+  await expect(articleImage).toHaveAttribute(
+    'src',
+    '/images/writing/rediscovering-webgl.png',
+  );
+  await expect(articleImage).toHaveAttribute(
+    'alt',
+    'Flowing WebGL fluid visualization with bright white and green currents edged in pink and purple.',
+  );
+  await expect
+    .poll(() =>
+      articleImage.evaluate(
+        (element) => (element as HTMLImageElement).naturalWidth,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await expect(
+    page.getByRole('link', { name: 'this', exact: true }),
+  ).toHaveAttribute(
+    'href',
+    'https://paveldogreat.github.io/WebGL-Fluid-Simulation/',
+  );
+  const overflows = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(overflows).toBe(false);
+});
+
+test('shows each project screenshot on its homepage case study card', async ({
+  page,
+}) => {
+  const projects = [
+    {
+      slug: 'robot-parts-accessories-ecommerce',
+      image: '/images/projects/robot-parts-accessories-ecommerce.png',
+    },
+    {
+      slug: 'marketing-materials-ordering-ecommerce',
+      image: '/images/projects/marketing-materials-ordering-ecommerce.png',
+    },
+    {
+      slug: 'shop-floor-data-collection',
+      image: '/images/projects/shop-floor-data-collection.png',
+    },
+  ];
+
+  await page.goto('/');
+
+  for (const { slug, image: imageSrc } of projects) {
+    const card = page.locator(`#work a[href="/work/${slug}/"]`);
+    const image = card.locator('.work-card-thumbnail');
+    const arrow = card.locator('.work-card-arrow');
+    await expect(image).toHaveAttribute('src', imageSrc);
+    await expect(image).toHaveAttribute('alt', '');
+    await expect(image).toHaveAttribute('aria-hidden', 'true');
+    await expect(image).toHaveCSS('object-fit', 'cover');
+    await expect(image).toHaveCSS('object-position', '50% 50%');
+    await expect(arrow).toHaveText('↗');
+    await expect(arrow).toHaveAttribute('aria-hidden', 'true');
+    await expect
+      .poll(() =>
+        image.evaluate((element) => (element as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+
+    const arrowPosition = await card.evaluate((element) => {
+      const arrow = element.querySelector('.work-card-arrow');
+      const header = element.querySelector('.work-card-top');
+      const thumbnail = element.querySelector('.work-card-thumbnail');
+      if (!arrow || !header || !thumbnail) {
+        throw new Error(
+          'Case study card is missing its arrow, header, or thumbnail.',
+        );
+      }
+      const cardBounds = element.getBoundingClientRect();
+      const arrowBounds = arrow.getBoundingClientRect();
+      const headerBounds = header.getBoundingClientRect();
+      const thumbnailBounds = thumbnail.getBoundingClientRect();
+      return {
+        rightInset: cardBounds.right - arrowBounds.right,
+        arrowWithinHeader:
+          arrowBounds.top >= headerBounds.top &&
+          arrowBounds.bottom <= headerBounds.bottom,
+        headerAboveThumbnail: headerBounds.bottom < thumbnailBounds.top,
+      };
+    });
+    expect(arrowPosition.rightInset).toBeGreaterThan(0);
+    expect(arrowPosition.rightInset).toBeLessThan(40);
+    expect(arrowPosition.arrowWithinHeader).toBe(true);
+    expect(arrowPosition.headerAboveThumbnail).toBe(true);
+
+    const verticalGaps = await card.evaluate((element) => {
+      const bounds = (selector: string) => {
+        const child = element.querySelector(selector);
+        if (!child) throw new Error(`Missing card element: ${selector}`);
+        const rect = child.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom };
+      };
+      const label = bounds('.work-card-top');
+      const thumbnail = bounds('.work-card-thumbnail');
+      const title = bounds('h3');
+      const summary = bounds('p');
+      return [
+        thumbnail.top - label.bottom,
+        title.top - thumbnail.bottom,
+        summary.top - title.bottom,
+      ];
+    });
+    for (const gap of verticalGaps) {
+      expect(gap).toBeGreaterThanOrEqual(32);
+    }
+  }
+
+  const cardMetrics = await page
+    .locator('#work .work-card')
+    .evaluateAll((cards) =>
+      cards.map((card) => {
+        const bounds = card.getBoundingClientRect();
+        return {
+          width: bounds.width,
+          height: bounds.height,
+          scrollHeight: card.scrollHeight,
+          clientHeight: card.clientHeight,
+        };
+      }),
+    );
+  expect(cardMetrics).toHaveLength(3);
+  for (const metrics of cardMetrics) {
+    expect(Math.abs(metrics.width - cardMetrics[0].width)).toBeLessThan(1);
+    expect(Math.abs(metrics.height - cardMetrics[0].height)).toBeLessThan(1);
+    expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.clientHeight);
+  }
+});
+
+test('publishes the supplied case studies with their screenshots', async ({
+  page,
+}) => {
+  const caseStudies = [
+    {
+      slug: 'robot-parts-accessories-ecommerce',
+      title: 'Robot Parts & Accessories ECommerce',
+      tags: 'Adobe XD · Adobe Illustrator · .NET · C# · Kentico CMS',
+      imageAlt:
+        'Robotics parts storefront listing pendant protection accessories with product details and add-to-cart controls.',
+    },
+    {
+      slug: 'marketing-materials-ordering-ecommerce',
+      title: 'Marketing Materials Ordering and ECommerce',
+      tags: 'Figma · Adobe Illustrator · .NET · C# · Angular 12+',
+      imageAlt:
+        'Retail ordering portal showing an apparel catalog with selectable products and cart controls.',
+    },
+    {
+      slug: 'shop-floor-data-collection',
+      title: 'Shop Floor Data Collection Re-imagined',
+      tags: 'Adobe XD · .NET · C# · Angular 12+ · Material UI',
+      imageAlt:
+        'Shop floor job schedule with order details, materials, production quantities, and machine controls.',
+    },
+  ];
+
+  for (const { slug, title, tags, imageAlt } of caseStudies) {
+    await page.goto(`/work/${slug}/`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+    const screenshot = page.locator('.project-screenshot');
+    const image = screenshot.getByRole('img');
+    await expect(screenshot).toBeVisible();
+    await expect(image).toHaveAttribute('alt', imageAlt);
+    await expect
+      .poll(() =>
+        image.evaluate((element) => (element as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator('.site-footer span')).toContainText(tags);
+
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    );
+    expect(overflows).toBe(false);
+  }
+});
+
 test('falls back cleanly when WebGL is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;

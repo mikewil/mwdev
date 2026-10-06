@@ -1,6 +1,6 @@
 export interface ProjectLike {
   id: string;
-  data: { draft: boolean; featured: boolean; year: number };
+  data: { draft: boolean; featured: boolean; year?: number };
 }
 
 export interface WritingLike {
@@ -16,7 +16,7 @@ export function getPublishedProjects<T extends ProjectLike>(
     .sort(
       (a, b) =>
         Number(b.data.featured) - Number(a.data.featured) ||
-        b.data.year - a.data.year,
+        (b.data.year ?? 0) - (a.data.year ?? 0),
     );
 }
 
